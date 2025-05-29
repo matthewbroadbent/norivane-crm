@@ -1,247 +1,255 @@
 import { useState, useEffect } from 'react';
-import {
-  Box,
-  Grid,
-  Paper,
-  Typography,
-  Card,
-  CardContent,
+import { 
+  Box, 
+  Grid, 
+  Paper, 
+  Typography, 
+  Card, 
+  CardContent, 
   CardHeader,
-  Divider,
   List,
   ListItem,
   ListItemText,
   ListItemAvatar,
   Avatar,
-  Button,
+  Divider
 } from '@mui/material';
-import {
-  People as ContactsIcon,
-  Email as EmailIcon,
-  FilterAlt as FunnelIcon, // Changed from Funnel to FilterAlt
-  CalendarMonth as CalendarIcon,
+import { 
+  Email as EmailIcon, 
+  People as PeopleIcon, 
+  TrendingUp as TrendingUpIcon, 
+  CalendarToday as CalendarIcon 
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
-import { useAuthStore } from '../stores/authStore';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer 
+} from 'recharts';
+
+// Mock data for the dashboard
+const emailStats = [
+  { month: 'Jan', sent: 400, opened: 240, clicked: 100 },
+  { month: 'Feb', sent: 300, opened: 198, clicked: 80 },
+  { month: 'Mar', sent: 200, opened: 120, clicked: 50 },
+  { month: 'Apr', sent: 278, opened: 189, clicked: 90 },
+  { month: 'May', sent: 189, opened: 130, clicked: 60 },
+  { month: 'Jun', sent: 239, opened: 180, clicked: 85 },
+];
+
+const recentContacts = [
+  { id: 1, name: 'John Doe', email: 'john.doe@example.com', date: '2023-07-15' },
+  { id: 2, name: 'Jane Smith', email: 'jane.smith@example.com', date: '2023-07-14' },
+  { id: 3, name: 'Robert Johnson', email: 'robert.j@example.com', date: '2023-07-13' },
+  { id: 4, name: 'Emily Davis', email: 'emily.d@example.com', date: '2023-07-12' },
+];
+
+const upcomingEvents = [
+  { id: 1, title: 'Client Meeting', date: '2023-07-20 10:00 AM' },
+  { id: 2, title: 'Product Demo', date: '2023-07-21 2:00 PM' },
+  { id: 3, title: 'Team Sync', date: '2023-07-22 9:00 AM' },
+];
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const { user } = useAuthStore();
-  const [stats, setStats] = useState({
-    contacts: 0,
-    campaigns: 0,
-    funnels: 0,
-    events: 0,
-  });
-  const [recentContacts, setRecentContacts] = useState<any[]>([]);
-  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
-
+  const [loading, setLoading] = useState(true);
+  
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!user) return;
-
-      // Fetch counts
-      const [contactsResponse, campaignsResponse, funnelsResponse, eventsResponse] = await Promise.all([
-        supabase.from('contacts').select('id', { count: 'exact' }).eq('user_id', user.id),
-        supabase.from('campaigns').select('id', { count: 'exact' }).eq('user_id', user.id),
-        supabase.from('funnels').select('id', { count: 'exact' }).eq('user_id', user.id),
-        supabase.from('events').select('id', { count: 'exact' }).eq('user_id', user.id),
-      ]);
-
-      setStats({
-        contacts: contactsResponse.count || 0,
-        campaigns: campaignsResponse.count || 0,
-        funnels: funnelsResponse.count || 0,
-        events: eventsResponse.count || 0,
-      });
-
-      // Fetch recent contacts
-      const { data: contacts } = await supabase
-        .from('contacts')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      setRecentContacts(contacts || []);
-
-      // Fetch upcoming events
-      const today = new Date().toISOString();
-      const { data: events } = await supabase
-        .from('events')
-        .select('*, contacts(*)')
-        .eq('user_id', user.id)
-        .gte('start_time', today)
-        .order('start_time', { ascending: true })
-        .limit(5);
-
-      setUpcomingEvents(events || []);
-    };
-
-    fetchDashboardData();
-  }, [user]);
-
-  const StatCard = ({ title, value, icon, color, onClick }: any) => (
-    <Card 
-      sx={{ 
-        height: '100%', 
-        cursor: 'pointer',
-        transition: 'transform 0.2s',
-        '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: 3,
-        },
-      }}
-      onClick={onClick}
-    >
-      <CardContent sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <Typography variant="h6" color="text.secondary">
-            {title}
-          </Typography>
-          <Avatar sx={{ bgcolor: color }}>
-            {icon}
-          </Avatar>
-        </Box>
-        <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', mt: 'auto' }}>
-          {value}
-        </Typography>
-      </CardContent>
-    </Card>
-  );
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
+    // Simulate data loading
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
   return (
     <Box>
-      <Typography variant="h4" sx={{ mb: 4 }}>
+      <Typography variant="h4" gutterBottom>
         Dashboard
       </Typography>
-
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Total Contacts"
-            value={stats.contacts}
-            icon={<ContactsIcon />}
-            color="primary.main"
-            onClick={() => navigate('/contacts')}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Email Campaigns"
-            value={stats.campaigns}
-            icon={<EmailIcon />}
-            color="secondary.main"
-            onClick={() => navigate('/email-campaigns')}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Sales Funnels"
-            value={stats.funnels}
-            icon={<FunnelIcon />}
-            color="success.main"
-            onClick={() => navigate('/sales-funnels')}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Calendar Events"
-            value={stats.events}
-            icon={<CalendarIcon />}
-            color="warning.main"
-            onClick={() => navigate('/calendar')}
-          />
-        </Grid>
-      </Grid>
-
+      
       <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardHeader 
-              title="Recent Contacts" 
-              action={
-                <Button color="primary" onClick={() => navigate('/contacts')}>
-                  View All
-                </Button>
-              }
-            />
-            <Divider />
-            <List sx={{ p: 0 }}>
-              {recentContacts.length > 0 ? (
-                recentContacts.map((contact) => (
-                  <ListItem 
-                    key={contact.id} 
-                    divider 
-                    button 
-                    onClick={() => navigate(`/contacts/${contact.id}`)}
-                  >
-                    <ListItemAvatar>
-                      <Avatar>{contact.name.charAt(0)}</Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={contact.name}
-                      secondary={contact.email}
-                    />
-                    <Typography variant="caption" color="text.secondary">
-                      {formatDate(contact.created_at)}
-                    </Typography>
-                  </ListItem>
-                ))
-              ) : (
-                <ListItem>
-                  <ListItemText primary="No contacts found" />
-                </ListItem>
-              )}
-            </List>
+        {/* Stats Cards */}
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: 2,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Avatar sx={{ bgcolor: 'primary.light', mr: 2 }}>
+                <PeopleIcon />
+              </Avatar>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Total Contacts
+                </Typography>
+                <Typography variant="h5">1,254</Typography>
+              </Box>
+            </Box>
+          </Paper>
+        </Grid>
+        
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: 2,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Avatar sx={{ bgcolor: 'secondary.light', mr: 2 }}>
+                <EmailIcon />
+              </Avatar>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Emails Sent
+                </Typography>
+                <Typography variant="h5">8,632</Typography>
+              </Box>
+            </Box>
+          </Paper>
+        </Grid>
+        
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: 2,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Avatar sx={{ bgcolor: 'success.light', mr: 2 }}>
+                <TrendingUpIcon />
+              </Avatar>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Open Rate
+                </Typography>
+                <Typography variant="h5">68.7%</Typography>
+              </Box>
+            </Box>
+          </Paper>
+        </Grid>
+        
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: 2,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Avatar sx={{ bgcolor: 'warning.light', mr: 2 }}>
+                <CalendarIcon />
+              </Avatar>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Upcoming Events
+                </Typography>
+                <Typography variant="h5">12</Typography>
+              </Box>
+            </Box>
+          </Paper>
+        </Grid>
+        
+        {/* Email Performance Chart */}
+        <Grid item xs={12} md={8}>
+          <Card elevation={0}>
+            <CardHeader title="Email Performance" />
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart
+                  data={emailStats}
+                  margin={{
+                    top: 5,
+                    right: 30,
+                    left: 20,
+                    bottom: 5,
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="sent" stroke="#8884d8" activeDot={{ r: 8 }} />
+                  <Line type="monotone" dataKey="opened" stroke="#82ca9d" />
+                  <Line type="monotone" dataKey="clicked" stroke="#ffc658" />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardHeader 
-              title="Upcoming Events" 
-              action={
-                <Button color="primary" onClick={() => navigate('/calendar')}>
-                  View Calendar
-                </Button>
-              }
-            />
-            <Divider />
-            <List sx={{ p: 0 }}>
-              {upcomingEvents.length > 0 ? (
-                upcomingEvents.map((event) => (
-                  <ListItem key={event.id} divider>
-                    <ListItemAvatar>
-                      <Avatar sx={{ bgcolor: 'warning.main' }}>
-                        <CalendarIcon />
-                      </Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={event.title}
-                      secondary={event.contacts?.name || 'No contact'}
-                    />
-                    <Typography variant="caption" color="text.secondary">
-                      {formatDate(event.start_time)}
-                    </Typography>
-                  </ListItem>
-                ))
-              ) : (
-                <ListItem>
-                  <ListItemText primary="No upcoming events" />
-                </ListItem>
-              )}
-            </List>
+        
+        {/* Recent Contacts */}
+        <Grid item xs={12} md={4}>
+          <Card elevation={0}>
+            <CardHeader title="Recent Contacts" />
+            <CardContent sx={{ p: 0 }}>
+              <List>
+                {recentContacts.map((contact, index) => (
+                  <Box key={contact.id}>
+                    <ListItem>
+                      <ListItemAvatar>
+                        <Avatar>{contact.name.charAt(0)}</Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={contact.name}
+                        secondary={contact.email}
+                      />
+                    </ListItem>
+                    {index < recentContacts.length - 1 && <Divider variant="inset" component="li" />}
+                  </Box>
+                ))}
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+        
+        {/* Upcoming Events */}
+        <Grid item xs={12}>
+          <Card elevation={0}>
+            <CardHeader title="Upcoming Events" />
+            <CardContent sx={{ p: 0 }}>
+              <List>
+                {upcomingEvents.map((event, index) => (
+                  <Box key={event.id}>
+                    <ListItem>
+                      <ListItemAvatar>
+                        <Avatar>
+                          <CalendarIcon />
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={event.title}
+                        secondary={event.date}
+                      />
+                    </ListItem>
+                    {index < upcomingEvents.length - 1 && <Divider variant="inset" component="li" />}
+                  </Box>
+                ))}
+              </List>
+            </CardContent>
           </Card>
         </Grid>
       </Grid>

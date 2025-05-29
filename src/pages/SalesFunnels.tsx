@@ -1,361 +1,206 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
   Button,
-  Paper,
   Grid,
   Card,
   CardContent,
   CardActions,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
-  InputAdornment,
-  Menu,
-  MenuItem,
-  CircularProgress,
+  IconButton,
+  Chip,
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Search as SearchIcon,
+  FilterAlt as FunnelIcon,
   MoreVert as MoreVertIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  ContentCopy as DuplicateIcon,
-  ArrowForward as ArrowForwardIcon,
 } from '@mui/icons-material';
-import { useFunnelsStore } from '../stores/funnelsStore';
-import { useAuthStore } from '../stores/authStore';
-import FunnelForm from '../components/FunnelForm';
 
-export default function SalesFunnels() {
+// Mock data for sales funnels
+const mockFunnels = [
+  {
+    id: '1',
+    name: 'New Customer Onboarding',
+    description: 'Guide new customers through the onboarding process',
+    stages: 5,
+    contacts: 124,
+    lastUpdated: '2023-07-10',
+  },
+  {
+    id: '2',
+    name: 'Product Demo Follow-up',
+    description: 'Follow up with prospects after product demonstrations',
+    stages: 4,
+    contacts: 87,
+    lastUpdated: '2023-07-08',
+  },
+  {
+    id: '3',
+    name: 'Renewal Campaign',
+    description: 'Engage with customers approaching subscription renewal',
+    stages: 3,
+    contacts: 56,
+    lastUpdated: '2023-07-05',
+  },
+];
+
+const SalesFunnels = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
-  const { funnels, stages, loading, error, fetchFunnels, fetchStages, addFunnel, updateFunnel, deleteFunnel } = useFunnelsStore();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [formOpen, setFormOpen] = useState(false);
-  const [selectedFunnel, setSelectedFunnel] = useState<any>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [funnelToDelete, setFunnelToDelete] = useState<string | null>(null);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [menuFunnelId, setMenuFunnelId] = useState<string | null>(null);
+  const [funnels, setFunnels] = useState(mockFunnels);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [newFunnel, setNewFunnel] = useState({
+    name: '',
+    description: '',
+  });
 
-  useEffect(() => {
-    fetchFunnels();
-    fetchStages();
-  }, [fetchFunnels, fetchStages]);
-
-  const handleOpenMenu = (event: React.MouseEvent<HTMLElement>, funnelId: string) => {
-    setAnchorEl(event.currentTarget);
-    setMenuFunnelId(funnelId);
+  const handleOpenDialog = () => {
+    setOpenDialog(true);
   };
 
-  const handleCloseMenu = () => {
-    setAnchorEl(null);
-    setMenuFunnelId(null);
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setNewFunnel({ name: '', description: '' });
   };
 
-  const handleAddFunnel = () => {
-    setSelectedFunnel(null);
-    setFormOpen(true);
+  const handleCreateFunnel = () => {
+    const newFunnelData = {
+      id: Date.now().toString(),
+      name: newFunnel.name,
+      description: newFunnel.description,
+      stages: 3, // Default number of stages
+      contacts: 0,
+      lastUpdated: new Date().toISOString().split('T')[0],
+    };
+
+    setFunnels([...funnels, newFunnelData]);
+    handleCloseDialog();
   };
 
-  const handleEditFunnel = (funnel: any) => {
-    setSelectedFunnel(funnel);
-    setFormOpen(true);
-    handleCloseMenu();
+  const handleFunnelClick = (id: string) => {
+    navigate(`/sales-funnels/${id}`);
   };
-
-  const handleDeleteClick = (funnelId: string) => {
-    setFunnelToDelete(funnelId);
-    setDeleteDialogOpen(true);
-    handleCloseMenu();
-  };
-
-  const handleConfirmDelete = async () => {
-    if (funnelToDelete) {
-      await deleteFunnel(funnelToDelete);
-      setDeleteDialogOpen(false);
-      setFunnelToDelete(null);
-    }
-  };
-
-  const handleFormSubmit = async (values: any, stageValues: any[]) => {
-    if (user) {
-      if (selectedFunnel) {
-        await updateFunnel(selectedFunnel.id, values);
-        // Update stages would be implemented here
-      } else {
-        const newFunnel = await addFunnel({
-          ...values,
-          user_id: user.id,
-        });
-        
-        if (newFunnel) {
-          // Add stages would be implemented here
-        }
-      }
-      setFormOpen(false);
-    }
-  };
-
-  const filteredFunnels = funnels.filter(
-    (funnel) => funnel.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const getFunnelStages = (funnelId: string) => {
-    return stages
-      .filter(stage => stage.funnel_id === funnelId)
-      .sort((a, b) => a.order - b.order);
-  };
-
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Sales Funnels
-        </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+        <Typography variant="h4">Sales Funnels</Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={handleAddFunnel}
+          onClick={handleOpenDialog}
         >
           Create Funnel
         </Button>
       </Box>
 
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <TextField
-          placeholder="Search funnels..."
-          variant="outlined"
-          size="small"
-          fullWidth
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-        />
-      </Paper>
+      <Grid container spacing={3}>
+        {funnels.map((funnel) => (
+          <Grid item xs={12} sm={6} md={4} key={funnel.id}>
+            <Card 
+              elevation={0}
+              sx={{ 
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                cursor: 'pointer',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                },
+              }}
+              onClick={() => handleFunnelClick(funnel.id)}
+            >
+              <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <FunnelIcon color="primary" sx={{ mr: 1 }} />
+                  <Typography variant="h6" component="div">
+                    {funnel.name}
+                  </Typography>
+                </Box>
+                <IconButton size="small">
+                  <MoreVertIcon />
+                </IconButton>
+              </Box>
+              
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  {funnel.description}
+                </Typography>
+                
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                  <Chip 
+                    label={`${funnel.stages} Stages`} 
+                    size="small" 
+                    color="primary" 
+                    variant="outlined" 
+                  />
+                  <Chip 
+                    label={`${funnel.contacts} Contacts`} 
+                    size="small" 
+                    color="secondary" 
+                    variant="outlined" 
+                  />
+                </Box>
+              </CardContent>
+              
+              <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Last updated: {funnel.lastUpdated}
+                </Typography>
+                <Button size="small" color="primary">
+                  View Details
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
 
-      {filteredFunnels.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h6" gutterBottom>
-            No Sales Funnels Yet
-          </Typography>
-          <Typography variant="body1" color="text.secondary" paragraph>
-            Create your first sales funnel to track your prospect-to-customer journey.
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleAddFunnel}
-          >
-            Create Funnel
-          </Button>
-        </Paper>
-      ) : (
-        <Grid container spacing={3}>
-          {filteredFunnels.map((funnel) => {
-            const funnelStages = getFunnelStages(funnel.id);
-            
-            return (
-              <Grid item xs={12} md={6} lg={4} key={funnel.id}>
-                <Card
-                  variant="outlined"
-                  sx={{
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    borderRadius: 2,
-                    '&:hover': {
-                      boxShadow: 3,
-                    },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => handleOpenMenu(e, funnel.id)}
-                    >
-                      <MoreVertIcon />
-                    </IconButton>
-                  </Box>
-                  <CardContent sx={{ flexGrow: 1, pt: 0 }}>
-                    <Typography variant="h6" component="div" gutterBottom>
-                      {funnel.name}
-                    </Typography>
-                    {funnel.description && (
-                      <Typography variant="body2" color="text.secondary" paragraph>
-                        {funnel.description}
-                      </Typography>
-                    )}
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="subtitle2" gutterBottom>
-                        Stages:
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                        {funnelStages.map((stage, index) => (
-                          <Box
-                            key={stage.id}
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                          >
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                bgcolor: 'background.default',
-                                px: 1,
-                                py: 0.5,
-                                borderRadius: 1,
-                              }}
-                            >
-                              {stage.name}
-                            </Typography>
-                            {index < funnelStages.length - 1 && (
-                              <ArrowForwardIcon
-                                fontSize="small"
-                                sx={{ mx: 0.5, color: 'text.secondary' }}
-                              />
-                            )}
-                          </Box>
-                        ))}
-                        {funnelStages.length === 0 && (
-                          <Typography variant="body2" color="text.secondary">
-                            No stages defined
-                          </Typography>
-                        )}
-                      </Box>
-                    </Box>
-                  </CardContent>
-                  <CardActions sx={{ p: 2, pt: 0 }}>
-                    <Button
-                      size="small"
-                      onClick={() => navigate(`/sales-funnels/${funnel.id}`)}
-                    >
-                      View Details
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            );
-          })}
-        </Grid>
-      )}
-
-      {/* Funnel Form Dialog */}
-      <Dialog
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          {selectedFunnel ? 'Edit Sales Funnel' : 'Create Sales Funnel'}
-        </DialogTitle>
-        <DialogContent dividers>
-          <FunnelForm
-            initialValues={selectedFunnel}
-            initialStages={selectedFunnel ? getFunnelStages(selectedFunnel.id) : []}
-            onSubmit={handleFormSubmit}
-            onCancel={() => setFormOpen(false)}
+      {/* Create Funnel Dialog */}
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Create New Sales Funnel</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Funnel Name"
+            fullWidth
+            variant="outlined"
+            value={newFunnel.name}
+            onChange={(e) => setNewFunnel({ ...newFunnel, name: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Description"
+            fullWidth
+            variant="outlined"
+            multiline
+            rows={3}
+            value={newFunnel.description}
+            onChange={(e) => setNewFunnel({ ...newFunnel, description: e.target.value })}
           />
         </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-      >
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete this sales funnel? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleConfirmDelete}
-            color="error"
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
+          <Button 
+            onClick={handleCreateFunnel} 
             variant="contained"
+            disabled={!newFunnel.name}
           >
-            Delete
+            Create
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Funnel Actions Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleCloseMenu}
-      >
-        <MenuItem
-          onClick={() => {
-            if (menuFunnelId) {
-              const funnel = funnels.find((f) => f.id === menuFunnelId);
-              if (funnel) {
-                handleEditFunnel(funnel);
-              }
-            }
-          }}
-        >
-          <EditIcon fontSize="small" sx={{ mr: 1 }} />
-          Edit
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (menuFunnelId) {
-              navigate(`/sales-funnels/${menuFunnelId}`);
-            }
-            handleCloseMenu();
-          }}
-        >
-          <ArrowForwardIcon fontSize="small" sx={{ mr: 1 }} />
-          View Details
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            // Duplicate functionality would be implemented here
-            handleCloseMenu();
-          }}
-        >
-          <DuplicateIcon fontSize="small" sx={{ mr: 1 }} />
-          Duplicate
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (menuFunnelId) {
-              handleDeleteClick(menuFunnelId);
-            }
-          }}
-          sx={{ color: 'error.main' }}
-        >
-          <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-          Delete
-        </MenuItem>
-      </Menu>
     </Box>
   );
-}
+};
+
+export default SalesFunnels;

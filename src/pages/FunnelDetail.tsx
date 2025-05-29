@@ -1,362 +1,449 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   Box,
   Typography,
-  Button,
   Paper,
+  Stepper,
+  Step,
+  StepLabel,
+  Button,
+  Divider,
   Grid,
   Card,
   CardContent,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
+  Avatar,
   IconButton,
+  Menu,
+  MenuItem,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  Divider,
-  Menu,
-  MenuItem,
-  CircularProgress,
-  Avatar,
-  Chip,
 } from '@mui/material';
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
-  ArrowBack as ArrowBackIcon,
-  Add as AddIcon,
   MoreVert as MoreVertIcon,
-  ArrowForward as ArrowForwardIcon,
-  Person as PersonIcon,
+  PersonAdd as PersonAddIcon,
+  Email as EmailIcon,
 } from '@mui/icons-material';
-import { useFunnelsStore } from '../stores/funnelsStore';
-import { useContactsStore } from '../stores/contactsStore';
-import FunnelForm from '../components/FunnelForm';
-import { format } from 'date-fns';
 
-export default function FunnelDetail() {
+// Mock data for funnel details
+const mockFunnelData = {
+  '1': {
+    id: '1',
+    name: 'New Customer Onboarding',
+    description: 'Guide new customers through the onboarding process',
+    stages: [
+      'Initial Contact',
+      'Welcome Email',
+      'Product Setup',
+      'Training Session',
+      'Follow-up',
+    ],
+    contacts: [
+      { id: '1', name: 'John Doe', email: 'john.doe@example.com', stage: 0 },
+      { id: '2', name: 'Jane Smith', email: 'jane.smith@example.com', stage: 1 },
+      { id: '3', name: 'Robert Johnson', email: 'robert.j@example.com', stage: 2 },
+      { id: '4', name: 'Emily Davis', email: 'emily.d@example.com', stage: 3 },
+      { id: '5', name: 'Michael Brown', email: 'michael.b@example.com', stage: 4 },
+    ],
+  },
+  '2': {
+    id: '2',
+    name: 'Product Demo Follow-up',
+    description: 'Follow up with prospects after product demonstrations',
+    stages: [
+      'Demo Completed',
+      'Initial Follow-up',
+      'Needs Assessment',
+      'Proposal',
+    ],
+    contacts: [
+      { id: '6', name: 'Sarah Wilson', email: 'sarah.w@example.com', stage: 0 },
+      { id: '7', name: 'David Miller', email: 'david.m@example.com', stage: 1 },
+      { id: '8', name: 'Lisa Taylor', email: 'lisa.t@example.com', stage: 2 },
+    ],
+  },
+  '3': {
+    id: '3',
+    name: 'Renewal Campaign',
+    description: 'Engage with customers approaching subscription renewal',
+    stages: [
+      'Renewal Notice',
+      'Check-in Call',
+      'Renewal Decision',
+    ],
+    contacts: [
+      { id: '9', name: 'Thomas Anderson', email: 'thomas.a@example.com', stage: 0 },
+      { id: '10', name: 'Jessica Lee', email: 'jessica.l@example.com', stage: 1 },
+    ],
+  },
+};
+
+const FunnelDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { funnels, stages, loading, error, fetchFunnels, fetchStages, updateFunnel, deleteFunnel } = useFunnelsStore();
-  const { contacts, fetchContacts } = useContactsStore();
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [funnel, setFunnel] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [menuContactId, setMenuContactId] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editedFunnel, setEditedFunnel] = useState({
+    name: '',
+    description: '',
+  });
+  const [addContactDialogOpen, setAddContactDialogOpen] = useState(false);
+  const [newContact, setNewContact] = useState({
+    name: '',
+    email: '',
+    stage: 0,
+  });
 
   useEffect(() => {
-    if (id) {
-      fetchFunnels();
-      fetchStages();
-      fetchContacts();
-    }
-  }, [id, fetchFunnels, fetchStages, fetchContacts]);
+    // Simulate API call to get funnel data
+    const fetchFunnel = () => {
+      setLoading(true);
+      setTimeout(() => {
+        if (id && mockFunnelData[id as keyof typeof mockFunnelData]) {
+          const funnelData = mockFunnelData[id as keyof typeof mockFunnelData];
+          setFunnel(funnelData);
+          setEditedFunnel({
+            name: funnelData.name,
+            description: funnelData.description,
+          });
+        }
+        setLoading(false);
+      }, 500);
+    };
 
-  const funnel = funnels.find(f => f.id === id);
-  const funnelStages = stages
-    .filter(stage => stage.funnel_id === id)
-    .sort((a, b) => a.order - b.order);
+    fetchFunnel();
+  }, [id]);
 
-  const handleOpenMenu = (event: React.MouseEvent<HTMLElement>, contactId: string) => {
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
-    setMenuContactId(contactId);
   };
 
-  const handleCloseMenu = () => {
+  const handleMenuClose = () => {
     setAnchorEl(null);
-    setMenuContactId(null);
   };
 
-  const handleEditFunnel = () => {
+  const handleEditClick = () => {
     setEditDialogOpen(true);
+    handleMenuClose();
   };
 
-  const handleDeleteFunnel = async () => {
-    if (id) {
-      await deleteFunnel(id);
-      setDeleteDialogOpen(false);
-      navigate('/sales-funnels');
-    }
+  const handleEditDialogClose = () => {
+    setEditDialogOpen(false);
   };
 
-  const handleFormSubmit = async (values: any, stageValues: any[]) => {
-    if (id && funnel) {
-      await updateFunnel(id, values);
-      // Update stages would be implemented here
-      setEditDialogOpen(false);
-    }
+  const handleSaveEdit = () => {
+    setFunnel({
+      ...funnel,
+      name: editedFunnel.name,
+      description: editedFunnel.description,
+    });
+    setEditDialogOpen(false);
   };
 
-  // This would be replaced with actual data from the database
-  const getContactsInStage = (stageId: string) => {
-    // For demo purposes, we'll just return some random contacts
-    return contacts.slice(0, Math.floor(Math.random() * 5));
+  const handleAddContactClick = () => {
+    setAddContactDialogOpen(true);
+  };
+
+  const handleAddContactDialogClose = () => {
+    setAddContactDialogOpen(false);
+    setNewContact({
+      name: '',
+      email: '',
+      stage: 0,
+    });
+  };
+
+  const handleAddContact = () => {
+    const newContactData = {
+      id: Date.now().toString(),
+      name: newContact.name,
+      email: newContact.email,
+      stage: newContact.stage,
+    };
+
+    setFunnel({
+      ...funnel,
+      contacts: [...funnel.contacts, newContactData],
+    });
+
+    handleAddContactDialogClose();
+  };
+
+  const handleMoveContact = (contactId: string, newStage: number) => {
+    const updatedContacts = funnel.contacts.map((contact: any) => {
+      if (contact.id === contactId) {
+        return { ...contact, stage: newStage };
+      }
+      return contact;
+    });
+
+    setFunnel({
+      ...funnel,
+      contacts: updatedContacts,
+    });
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-        <CircularProgress />
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+        <Typography>Loading funnel details...</Typography>
       </Box>
     );
   }
 
   if (!funnel) {
     return (
-      <Box sx={{ p: 5 }}>
+      <Box sx={{ p: 3 }}>
         <Typography variant="h5">Funnel not found</Typography>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/sales-funnels')}
-          sx={{ mt: 2 }}
-        >
-          Back to Funnels
-        </Button>
       </Box>
     );
   }
 
   return (
     <Box>
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/sales-funnels')}
-        sx={{ mb: 3 }}
-      >
-        Back to Funnels
-      </Button>
-      
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          {funnel.name}
-        </Typography>
+        <Box>
+          <Typography variant="h4">{funnel.name}</Typography>
+          <Typography variant="body1" color="text.secondary">
+            {funnel.description}
+          </Typography>
+        </Box>
         <Box>
           <Button
-            variant="outlined"
-            startIcon={<EditIcon />}
-            onClick={handleEditFunnel}
+            variant="contained"
+            startIcon={<PersonAddIcon />}
+            onClick={handleAddContactClick}
             sx={{ mr: 1 }}
           >
-            Edit
+            Add Contact
           </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<DeleteIcon />}
-            onClick={() => setDeleteDialogOpen(true)}
+          <IconButton onClick={handleMenuClick}>
+            <MoreVertIcon />
+          </IconButton>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleMenuClose}
           >
-            Delete
-          </Button>
+            <MenuItem onClick={handleEditClick}>
+              <EditIcon fontSize="small" sx={{ mr: 1 }} />
+              Edit Funnel
+            </MenuItem>
+            <MenuItem onClick={handleMenuClose}>
+              <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+              Delete Funnel
+            </MenuItem>
+            <MenuItem onClick={handleMenuClose}>
+              <EmailIcon fontSize="small" sx={{ mr: 1 }} />
+              Send Campaign
+            </MenuItem>
+          </Menu>
         </Box>
       </Box>
-      
-      {funnel.description && (
-        <Paper sx={{ p: 3, mb: 3 }}>
-          <Typography variant="body1">{funnel.description}</Typography>
-        </Paper>
-      )}
-      
-      <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
-        Funnel Stages
+
+      <Paper elevation={0} sx={{ p: 3, mb: 4 }}>
+        <Stepper alternativeLabel>
+          {funnel.stages.map((stage: string, index: number) => (
+            <Step key={index} completed={false}>
+              <StepLabel>{stage}</StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+      </Paper>
+
+      <Typography variant="h5" sx={{ mb: 2 }}>
+        Contacts by Stage
       </Typography>
-      
-      {funnelStages.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h6" gutterBottom>
-            No Stages Defined
-          </Typography>
-          <Typography variant="body1" color="text.secondary" paragraph>
-            Edit this funnel to add stages.
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<EditIcon />}
-            onClick={handleEditFunnel}
-          >
-            Edit Funnel
-          </Button>
-        </Paper>
-      ) : (
-        <Grid container spacing={3}>
-          {funnelStages.map((stage, index) => {
-            const stageContacts = getContactsInStage(stage.id);
-            
-            return (
-              <Grid item xs={12} md={6} lg={4} key={stage.id}>
-                <Card
-                  variant="outlined"
-                  sx={{
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    borderRadius: 2,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      p: 2,
-                      borderBottom: '1px solid',
-                      borderColor: 'divider',
-                      bgcolor: 'background.default',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Typography variant="h6" component="div">
-                        {stage.name}
-                      </Typography>
-                      <Chip
-                        label={stageContacts.length}
-                        size="small"
-                        sx={{ ml: 1 }}
-                      />
-                    </Box>
-                    {index < funnelStages.length - 1 && (
-                      <ArrowForwardIcon color="action" />
-                    )}
-                  </Box>
-                  <CardContent sx={{ flexGrow: 1, p: 0 }}>
-                    <List sx={{ p: 0 }}>
-                      {stageContacts.map((contact, idx) => (
-                        <React.Fragment key={contact.id}>
-                          <ListItem
-                            button
-                            onClick={() => navigate(`/contacts/${contact.id}`)}
-                          >
-                            <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
-                              {contact.name.charAt(0).toUpperCase()}
-                            </Avatar>
-                            <ListItemText
-                              primary={contact.name}
-                              secondary={contact.email}
-                            />
-                            <ListItemSecondaryAction>
-                              <IconButton
-                                edge="end"
-                                onClick={(e) => handleOpenMenu(e, contact.id)}
-                              >
-                                <MoreVertIcon />
-                              </IconButton>
-                            </ListItemSecondaryAction>
-                          </ListItem>
-                          {idx < stageContacts.length - 1 && <Divider />}
-                        </React.Fragment>
-                      ))}
-                      {stageContacts.length === 0 && (
-                        <ListItem>
+
+      <Grid container spacing={3}>
+        {funnel.stages.map((stage: string, stageIndex: number) => {
+          const stageContacts = funnel.contacts.filter(
+            (contact: any) => contact.stage === stageIndex
+          );
+
+          return (
+            <Grid item xs={12} md={6} lg={4} key={stageIndex}>
+              <Card elevation={0}>
+                <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'white' }}>
+                  <Typography variant="h6">{stage}</Typography>
+                  <Typography variant="body2">
+                    {stageContacts.length} contacts
+                  </Typography>
+                </Box>
+                <CardContent sx={{ p: 0 }}>
+                  <List>
+                    {stageContacts.length > 0 ? (
+                      stageContacts.map((contact: any) => (
+                        <ListItem
+                          key={contact.id}
+                          secondaryAction={
+                            <Box>
+                              {stageIndex > 0 && (
+                                <Button
+                                  size="small"
+                                  onClick={() =>
+                                    handleMoveContact(contact.id, stageIndex - 1)
+                                  }
+                                >
+                                  ←
+                                </Button>
+                              )}
+                              {stageIndex < funnel.stages.length - 1 && (
+                                <Button
+                                  size="small"
+                                  onClick={() =>
+                                    handleMoveContact(contact.id, stageIndex + 1)
+                                  }
+                                >
+                                  →
+                                </Button>
+                              )}
+                            </Box>
+                          }
+                        >
+                          <ListItemAvatar>
+                            <Avatar>{contact.name.charAt(0)}</Avatar>
+                          </ListItemAvatar>
                           <ListItemText
-                            primary="No contacts in this stage"
-                            secondary="Move contacts here to track their progress"
+                            primary={contact.name}
+                            secondary={contact.email}
                           />
                         </ListItem>
-                      )}
-                    </List>
-                  </CardContent>
-                  <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-                    <Button
-                      startIcon={<AddIcon />}
-                      size="small"
-                      fullWidth
-                      variant="outlined"
-                      onClick={() => {
-                        // This would open a dialog to add contacts to this stage
-                      }}
-                    >
-                      Add Contact
-                    </Button>
-                  </Box>
-                </Card>
-              </Grid>
-            );
-          })}
-        </Grid>
-      )}
-      
+                      ))
+                    ) : (
+                      <ListItem>
+                        <ListItemText
+                          primary="No contacts in this stage"
+                          primaryTypographyProps={{
+                            color: 'text.secondary',
+                            variant: 'body2',
+                            sx: { fontStyle: 'italic' },
+                          }}
+                        />
+                      </ListItem>
+                    )}
+                  </List>
+                </CardContent>
+              </Card>
+            </Grid>
+          );
+        })}
+      </Grid>
+
       {/* Edit Funnel Dialog */}
-      <Dialog
-        open={editDialogOpen}
-        onClose={() => setEditDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>Edit Sales Funnel</DialogTitle>
-        <DialogContent dividers>
-          <FunnelForm
-            initialValues={funnel}
-            initialStages={funnelStages}
-            onSubmit={handleFormSubmit}
-            onCancel={() => setEditDialogOpen(false)}
+      <Dialog open={editDialogOpen} onClose={handleEditDialogClose} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Funnel</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Funnel Name"
+            fullWidth
+            variant="outlined"
+            value={editedFunnel.name}
+            onChange={(e) =>
+              setEditedFunnel({ ...editedFunnel, name: e.target.value })
+            }
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Description"
+            fullWidth
+            variant="outlined"
+            multiline
+            rows={3}
+            value={editedFunnel.description}
+            onChange={(e) =>
+              setEditedFunnel({ ...editedFunnel, description: e.target.value })
+            }
           />
         </DialogContent>
-      </Dialog>
-      
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-      >
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete the "{funnel.name}" funnel? This action cannot be undone.
-          </Typography>
-        </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleDeleteFunnel}
-            color="error"
-            variant="contained"
-          >
-            Delete
+          <Button onClick={handleEditDialogClose}>Cancel</Button>
+          <Button onClick={handleSaveEdit} variant="contained">
+            Save
           </Button>
         </DialogActions>
       </Dialog>
-      
-      {/* Contact Actions Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleCloseMenu}
+
+      {/* Add Contact Dialog */}
+      <Dialog
+        open={addContactDialogOpen}
+        onClose={handleAddContactDialogClose}
+        maxWidth="sm"
+        fullWidth
       >
-        <MenuItem
-          onClick={() => {
-            if (menuContactId) {
-              navigate(`/contacts/${menuContactId}`);
+        <DialogTitle>Add Contact to Funnel</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Name"
+            fullWidth
+            variant="outlined"
+            value={newContact.name}
+            onChange={(e) =>
+              setNewContact({ ...newContact, name: e.target.value })
             }
-            handleCloseMenu();
-          }}
-        >
-          <PersonIcon fontSize="small" sx={{ mr: 1 }} />
-          View Contact
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            // This would open a dialog to move the contact to another stage
-            handleCloseMenu();
-          }}
-        >
-          <ArrowForwardIcon fontSize="small" sx={{ mr: 1 }} />
-          Move to Stage
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            // This would remove the contact from the funnel
-            handleCloseMenu();
-          }}
-          sx={{ color: 'error.main' }}
-        >
-          <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-          Remove from Funnel
-        </MenuItem>
-      </Menu>
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Email"
+            type="email"
+            fullWidth
+            variant="outlined"
+            value={newContact.email}
+            onChange={(e) =>
+              setNewContact({ ...newContact, email: e.target.value })
+            }
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            select
+            margin="dense"
+            label="Stage"
+            fullWidth
+            variant="outlined"
+            value={newContact.stage}
+            onChange={(e) =>
+              setNewContact({
+                ...newContact,
+                stage: Number(e.target.value),
+              })
+            }
+          >
+            {funnel.stages.map((stage: string, index: number) => (
+              <MenuItem key={index} value={index}>
+                {stage}
+              </MenuItem>
+            ))}
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAddContactDialogClose}>Cancel</Button>
+          <Button
+            onClick={handleAddContact}
+            variant="contained"
+            disabled={!newContact.name || !newContact.email}
+          >
+            Add
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
-}
+};
+
+export default FunnelDetail;
